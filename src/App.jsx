@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Navigation from './components/Navigation'
 import ProductUpload from './pages/ProductUpload'
 import WorkshopPlanner from './pages/WorkshopPlanner'
+import WorkshopBookings from './pages/WorkshopBookings'
 import Blog from './pages/Blog'
 import Messages from './pages/Messages'
 import OrdersBooked from './pages/OrdersBooked'
@@ -28,6 +29,7 @@ function App() {
           <Route path="/" element={<ProductUpload />} />
           <Route path="/product-upload" element={<ProductUpload />} />
           <Route path="/workshop-planner" element={<WorkshopPlanner />} />
+          <Route path="/workshop-bookings" element={<WorkshopBookings />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/messages" element={<Messages />} />
           <Route path="/orders-booked" element={<OrdersBooked />} />

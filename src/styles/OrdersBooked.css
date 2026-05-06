@@ -332,6 +332,12 @@
   font-style: italic;
 }
 
+.no-address {
+  color: #999;
+  margin: 0.5rem 0;
+  font-style: italic;
+}
+
 .address-content {
   background-color: #f9f9f9;
   padding: 1rem;

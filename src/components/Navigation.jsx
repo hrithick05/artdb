@@ -17,6 +17,9 @@ function Navigation() {
             <Link to="/workshop-planner">Workshop Planner</Link>
           </li>
           <li>
+            <Link to="/workshop-bookings">Workshop Bookings</Link>
+          </li>
+          <li>
             <Link to="/blog">Blog</Link>
           </li>
           <li>

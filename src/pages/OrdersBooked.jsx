@@ -86,6 +86,23 @@ function OrdersBooked() {
     }
   }
 
+  const parseShippingAddress = (addressData) => {
+    if (!addressData) return null
+    
+    // If it's a string, try to parse it as JSON
+    if (typeof addressData === 'string') {
+      try {
+        return JSON.parse(addressData)
+      } catch (e) {
+        console.error('Failed to parse shipping address:', e)
+        return null
+      }
+    }
+    
+    // If it's already an object, return it
+    return addressData
+  }
+
   const filteredOrders = orders.filter(order => {
     const matchesOrderStatus = !filterStatus || order.order_status === filterStatus
     const matchesPaymentStatus = !filterPaymentStatus || order.payment_status === filterPaymentStatus
@@ -210,21 +227,31 @@ function OrdersBooked() {
                     </div>
                   </div>
 
-                  {order.shipping_address && typeof order.shipping_address === 'object' && (
+                  {order.shipping_address && (
                     <div className="shipping-section">
                       <h4 className="section-title">📍 Shipping Address</h4>
                       <div className="address-content">
-                        {order.shipping_address.street && (
-                          <div className="address-line">{order.shipping_address.street}</div>
-                        )}
-                        <div className="address-line">
-                          {order.shipping_address.city && `${order.shipping_address.city}, `}
-                          {order.shipping_address.state && `${order.shipping_address.state} `}
-                          {order.shipping_address.pincode && order.shipping_address.pincode}
-                        </div>
-                        {order.shipping_address.country && (
-                          <div className="address-line">{order.shipping_address.country}</div>
-                        )}
+                        {(() => {
+                          const address = parseShippingAddress(order.shipping_address)
+                          if (!address) {
+                            return <p className="no-address">No address information</p>
+                          }
+                          return (
+                            <>
+                              {(address.street || address.address) && (
+                                <div className="address-line">{address.street || address.address}</div>
+                              )}
+                              <div className="address-line">
+                                {address.city && `${address.city}, `}
+                                {address.state && `${address.state} `}
+                                {address.pincode && address.pincode}
+                              </div>
+                              {address.country && (
+                                <div className="address-line">{address.country}</div>
+                              )}
+                            </>
+                          )
+                        })()}
                       </div>
                     </div>
                   )}
