@@ -24,6 +24,7 @@ function OrdersBooked() {
         .order('created_at', { ascending: false })
       
       if (fetchError) throw fetchError
+      console.log('Fetched orders:', data)
       setOrders(data || [])
     } catch (err) {
       console.error('Error fetching orders:', err)
@@ -263,26 +264,31 @@ function OrdersBooked() {
                     </div>
                   )}
 
-                  {(order.customization_notes || order.customization_image_url) && (
-                    <div className="customization-section">
-                      <h4 className="section-title">🎨 Customization</h4>
-                      {order.customization_notes && (
-                        <div className="detail-row">
-                          <strong>Notes:</strong>
-                          <span>{order.customization_notes}</span>
-                        </div>
-                      )}
-                      {order.customization_image_url && (
-                        <div className="customization-image-container">
-                          <img 
-                            src={order.customization_image_url} 
-                            alt="Customization preview" 
-                            className="customization-image"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  <div className="customization-section">
+                    <h4 className="section-title">🎨 Customization</h4>
+                    {order.customization_notes && (
+                      <div className="detail-row">
+                        <strong>Notes:</strong>
+                        <span>{order.customization_notes}</span>
+                      </div>
+                    )}
+                    {order.customization_image_url && (
+                      <div className="customization-image-container">
+                        <img 
+                          src={order.customization_image_url} 
+                          alt="Customization preview" 
+                          className="customization-image"
+                          onError={(e) => {
+                            console.error('Image load error:', e)
+                            e.target.style.display = 'none'
+                          }}
+                        />
+                      </div>
+                    )}
+                    {!order.customization_notes && !order.customization_image_url && (
+                      <p className="no-items">No customization details</p>
+                    )}
+                  </div>
 
                   <div className="razorpay-section">
                     {order.razorpay_payment_id && (
