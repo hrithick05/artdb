@@ -263,6 +263,27 @@ function OrdersBooked() {
                     </div>
                   )}
 
+                  {(order.customization_notes || order.customization_image_url) && (
+                    <div className="customization-section">
+                      <h4 className="section-title">🎨 Customization</h4>
+                      {order.customization_notes && (
+                        <div className="detail-row">
+                          <strong>Notes:</strong>
+                          <span>{order.customization_notes}</span>
+                        </div>
+                      )}
+                      {order.customization_image_url && (
+                        <div className="customization-image-container">
+                          <img 
+                            src={order.customization_image_url} 
+                            alt="Customization preview" 
+                            className="customization-image"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="razorpay-section">
                     {order.razorpay_payment_id && (
                       <div className="detail-row">

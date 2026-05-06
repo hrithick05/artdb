@@ -221,6 +221,7 @@
 .amount-section,
 .shipping-section,
 .notes-section,
+.customization-section,
 .razorpay-section {
   margin-bottom: 1.25rem;
 }
@@ -360,6 +361,23 @@
   color: #666;
   font-size: 0.95rem;
   line-height: 1.5;
+}
+
+.customization-image-container {
+  margin-top: 1rem;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background-color: #f9f9f9;
+  padding: 0.5rem;
+}
+
+.customization-image {
+  width: 100%;
+  height: auto;
+  max-height: 300px;
+  object-fit: contain;
+  border-radius: 0.25rem;
+  display: block;
 }
 
 .order-actions {
