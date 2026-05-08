@@ -304,6 +304,13 @@ function ProductUpload() {
                 required
               >
                 <option value="">Select Category</option>
+                <option value="handpainted-decor">Handpainted Decor</option>
+                <option value="wearable-art">Wearable Art</option>
+                <option value="journaling-paper-goods">Journaling & Paper Goods</option>
+                <option value="resin-cute-accessories">Resin & Cute Accessories</option>
+                <option value="desk-cozy-corner">Desk & Cozy Corner</option>
+                <option value="tamil-south-indian">Tamil / South Indian Collection</option>
+                <option value="custom-orders">Custom Orders</option>
                 <option value="handcraft">Handcraft</option>
                 <option value="textiles">Textiles</option>
                 <option value="pottery">Pottery</option>
