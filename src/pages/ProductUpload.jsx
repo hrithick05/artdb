@@ -16,6 +16,7 @@ function ProductUpload() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [editingId, setEditingId] = useState(null)
 
   useEffect(() => {
     fetchProducts()
@@ -110,104 +111,207 @@ function ProductUpload() {
   const handleUpload = async (e) => {
     e.preventDefault()
     setError('')
-    
-    if (!formData.category || !formData.title || !formData.price || !formData.numPictures) {
-      setError('Please fill in all required fields')
-      return
-    }
 
-    const requiredPics = parseInt(formData.numPictures)
-    if (images.length !== requiredPics) {
-      setError(`You specified ${requiredPics} picture(s) but uploaded ${images.length}. Please match the number.`)
-      return
+    if (!editingId) {
+      if (!formData.category || !formData.title || !formData.price || !formData.numPictures) {
+        setError('Please fill in all required fields')
+        return
+      }
+
+      const requiredPics = parseInt(formData.numPictures)
+      if (images.length !== requiredPics) {
+        setError(`You specified ${requiredPics} picture(s) but uploaded ${images.length}. Please match the number.`)
+        return
+      }
+    } else {
+      // In edit mode, only require basic fields
+      if (!formData.category || !formData.title || !formData.price) {
+        setError('Please fill in all required fields')
+        return
+      }
     }
 
     setLoading(true)
     try {
-      console.log('🚀 Starting product upload...')
-      
-      // Insert product into database
-      console.log('📝 Inserting product into database...')
-      const { data: productData, error: productError } = await supabase
-        .from('products')
-        .insert({
-          category: formData.category,
-          title: formData.title,
-          price: parseFloat(formData.price),
-          discount: parseFloat(formData.discount) || 0,
-          description: formData.description,
-          num_pictures: requiredPics
-        })
-        .select()
-      
-      if (productError) {
-        console.error('❌ Product insert error:', productError)
-        throw productError
-      }
-      
-      console.log('✅ Product inserted:', productData)
-      const productId = productData[0].id
-      
-      // Upload images and save to product_images table
-      console.log('📸 Starting image uploads...')
-      const imageUrls = []
-      for (let i = 0; i < images.length; i++) {
-        const img = images[i]
-        const timestamp = Date.now()
-        const randomStr = Math.random().toString(36).substring(2, 9)
-        const ext = img.file.name.split('.').pop()
-        const fileName = `product-${productId}-${timestamp}-${randomStr}.${ext}`
-        
-        console.log(`⬆️ Uploading image ${i + 1}/${images.length}: ${fileName}`)
-        
-        const { publicUrl, error: uploadError } = await uploadImage(
-          img.file,
-          'products',
-          fileName
-        )
-        
-        if (uploadError) {
-          console.error(`❌ Error uploading image ${i + 1}:`, uploadError)
-          throw new Error(`Failed to upload image ${i + 1}: ${uploadError.message}`)
-        }
-        
-        if (!publicUrl) {
-          throw new Error(`No public URL returned for image ${i + 1}`)
-        }
-        
-        console.log(`✅ Image ${i + 1} uploaded. URL: ${publicUrl}`)
-        
-        // Save image URL to product_images table
-        console.log(`💾 Saving image reference to database...`)
-        const { data: insertedImage, error: imageError } = await supabase
+      if (editingId) {
+        // Update existing product (text fields and images)
+        console.log('✏️ Updating product:', editingId)
+
+        // Handle image updates
+        const existingImages = images.filter(img => img.existing)
+        const newImages = images.filter(img => !img.existing)
+
+        // Get current images from database to compare
+        const { data: currentImages, error: fetchError } = await supabase
           .from('product_images')
+          .select('image_path')
+          .eq('product_id', editingId)
+
+        if (!fetchError && currentImages) {
+          // Delete images that are no longer in the existingImages list
+          const imagesToDelete = currentImages.filter(currentImg =>
+            !existingImages.some(existingImg => existingImg.path === currentImg.image_path)
+          )
+
+          for (const imgToDelete of imagesToDelete) {
+            try {
+              await supabase.storage
+                .from('products')
+                .remove([imgToDelete.image_path])
+              console.log(`✅ Deleted removed image: ${imgToDelete.image_path}`)
+            } catch (storageErr) {
+              console.warn(`Could not delete image from storage: ${imgToDelete.image_path}`, storageErr)
+            }
+          }
+
+          // Delete from database
+          if (imagesToDelete.length > 0) {
+            await supabase
+              .from('product_images')
+              .delete()
+              .eq('product_id', editingId)
+              .in('image_path', imagesToDelete.map(img => img.image_path))
+          }
+        }
+
+        // Upload new images if any
+        if (newImages.length > 0) {
+          console.log(`📸 Uploading ${newImages.length} new images...`)
+          for (let i = 0; i < newImages.length; i++) {
+            const img = newImages[i]
+            const timestamp = Date.now()
+            const randomStr = Math.random().toString(36).substring(2, 9)
+            const ext = img.file.name.split('.').pop()
+            const fileName = `product-${editingId}-${timestamp}-${randomStr}.${ext}`
+
+            const { publicUrl, error: uploadError } = await uploadImage(
+              img.file,
+              'products',
+              fileName
+            )
+
+            if (uploadError) {
+              console.error(`❌ Error uploading new image ${i + 1}:`, uploadError)
+              throw new Error(`Failed to upload new image ${i + 1}: ${uploadError.message}`)
+            }
+
+            // Save new image URL to product_images table
+            const { error: imageError } = await supabase
+              .from('product_images')
+              .insert({
+                product_id: editingId,
+                image_url: publicUrl,
+                image_path: fileName
+              })
+
+            if (imageError) {
+              console.error(`❌ Error saving new image reference:`, imageError)
+              throw new Error(`Failed to save new image reference: ${imageError.message}`)
+            }
+
+            console.log(`✅ New image uploaded and saved: ${fileName}`)
+          }
+        }
+
+        // Update product text fields
+        const { error: updateError } = await supabase
+          .from('products')
+          .update({
+            category: formData.category,
+            title: formData.title,
+            price: parseFloat(formData.price),
+            discount: parseFloat(formData.discount) || 0,
+            description: formData.description,
+            num_pictures: images.length // Update the count
+          })
+          .eq('id', editingId)
+          .select()
+
+        if (updateError) throw updateError
+        console.log('✅ Product updated successfully')
+        await fetchProducts()
+        clearForm()
+      } else {
+        // Insert new product
+        console.log('� Starting product upload...')
+        const requiredPics = parseInt(formData.numPictures)
+
+        const { data: productData, error: productError } = await supabase
+          .from('products')
           .insert({
-            product_id: productId,
-            image_url: publicUrl,
-            image_path: fileName
+            category: formData.category,
+            title: formData.title,
+            price: parseFloat(formData.price),
+            discount: parseFloat(formData.discount) || 0,
+            description: formData.description,
+            num_pictures: requiredPics
           })
           .select()
-        
-        if (imageError) {
-          console.error(`❌ Error saving image reference ${i + 1}:`, imageError)
-          throw new Error(`Failed to save image reference: ${imageError.message}`)
+
+        if (productError) {
+          console.error('❌ Product insert error:', productError)
+          throw productError
         }
-        
-        console.log(`✅ Image reference saved:`, insertedImage)
-        imageUrls.push(publicUrl)
+
+        console.log('✅ Product inserted:', productData)
+        const productId = productData[0].id
+
+        // Upload images and save to product_images table
+        console.log('📸 Starting image uploads...')
+        const imageUrls = []
+        for (let i = 0; i < images.length; i++) {
+          const img = images[i]
+          const timestamp = Date.now()
+          const randomStr = Math.random().toString(36).substring(2, 9)
+          const ext = img.file.name.split('.').pop()
+          const fileName = `product-${productId}-${timestamp}-${randomStr}.${ext}`
+
+          console.log(`⬆️ Uploading image ${i + 1}/${images.length}: ${fileName}`)
+
+          const { publicUrl, error: uploadError } = await uploadImage(
+            img.file,
+            'products',
+            fileName
+          )
+
+          if (uploadError) {
+            console.error(`❌ Error uploading image ${i + 1}:`, uploadError)
+            throw new Error(`Failed to upload image ${i + 1}: ${uploadError.message}`)
+          }
+
+          if (!publicUrl) {
+            throw new Error(`No public URL returned for image ${i + 1}`)
+          }
+
+          console.log(`✅ Image ${i + 1} uploaded. URL: ${publicUrl}`)
+
+          const { data: insertedImage, error: imageError } = await supabase
+            .from('product_images')
+            .insert({
+              product_id: productId,
+              image_url: publicUrl,
+              image_path: fileName
+            })
+            .select()
+
+          if (imageError) {
+            console.error(`❌ Error saving image reference ${i + 1}:`, imageError)
+            throw new Error(`Failed to save image reference: ${imageError.message}`)
+          }
+
+          console.log(`✅ Image reference saved:`, insertedImage)
+          imageUrls.push(publicUrl)
+        }
+
+        console.log('✅ All images uploaded and saved to database')
+        console.log('📊 Image URLs:', imageUrls)
+
+        await fetchProducts()
+        clearForm()
+        console.log('🎉 Product upload complete!')
       }
-      
-      console.log('✅ All images uploaded and saved to database')
-      console.log('📊 Image URLs:', imageUrls)
-      
-      console.log('✅ All images uploaded successfully')
-      
-      // Refresh products list
-      await fetchProducts()
-      clearForm()
-      console.log('🎉 Product upload complete!')
     } catch (err) {
-      const errorMsg = err.message || 'Failed to upload product'
+      const errorMsg = err.message || (editingId ? 'Failed to update product' : 'Failed to upload product')
       setError(errorMsg)
       console.error('❌ Upload error:', err)
     } finally {
@@ -226,6 +330,55 @@ function ProductUpload() {
     })
     setImages([])
     setError('')
+    setEditingId(null)
+  }
+
+  const handleEdit = async (product) => {
+    // Load existing images first
+    try {
+      const { data: existingImages, error: imgError } = await supabase
+        .from('product_images')
+        .select('image_url, image_path')
+        .eq('product_id', product.id)
+
+      if (imgError) console.warn('Error loading existing images:', imgError)
+
+      // Convert existing images to the format expected by the image preview
+      const loadedImages = (existingImages || []).map((img, index) => ({
+        id: `existing-${index}`,
+        file: null, // No file object for existing images
+        preview: img.image_url,
+        existing: true,
+        path: img.image_path
+      }))
+
+      setImages(loadedImages)
+
+      // Set form data after loading images
+      setFormData({
+        category: product.category,
+        title: product.title,
+        numPictures: loadedImages.length, // Set to current number of images
+        price: product.price,
+        discount: product.discount || '',
+        description: product.description || '',
+      })
+
+    } catch (err) {
+      console.warn('Could not load existing images:', err)
+      setImages([])
+      setFormData({
+        category: product.category,
+        title: product.title,
+        numPictures: 0,
+        price: product.price,
+        discount: product.discount || '',
+        description: product.description || '',
+      })
+    }
+
+    setEditingId(product.id)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const deleteProduct = async (productId) => {
@@ -334,17 +487,25 @@ function ProductUpload() {
             </div>
 
             <div className="form-group">
-              <label htmlFor="numPictures">Number of Pictures *</label>
+              <label htmlFor="numPictures">
+                Number of Pictures {editingId ? `(Current: ${images.length})` : '*'}
+              </label>
               <input
                 id="numPictures"
                 type="number"
                 name="numPictures"
-                value={formData.numPictures}
+                value={editingId ? images.length : formData.numPictures}
                 onChange={handleInputChange}
-                placeholder="Enter number of pictures to upload"
+                placeholder={editingId ? "Add more images if needed" : "Enter number of pictures to upload"}
                 min="1"
-                required
+                required={!editingId}
+                disabled={editingId}
               />
+              {editingId && (
+                <small style={{ color: '#6b7280', fontSize: '0.8rem' }}>
+                  In edit mode, the number is automatically managed. Add or remove images using the preview below.
+                </small>
+              )}
             </div>
 
             <div className="form-group">
@@ -387,6 +548,7 @@ function ProductUpload() {
             ></textarea>
           </div>
 
+          {!editingId && (
           <div className="form-group">
             <label>Upload Images *</label>
             <div
@@ -425,14 +587,30 @@ function ProductUpload() {
               </div>
             )}
           </div>
+          )}
+
+          {editingId && (
+            <div className="form-group" style={{ padding: '0.75rem', background: '#d1ecf1', borderRadius: '0.375rem', color: '#0c5460' }}>
+              <p style={{ margin: 0, fontSize: '0.9rem' }}>
+                ✏️ <strong>Editing mode:</strong> You can now add, remove, or replace images. Click ✕ to remove images, or add new ones by dragging/dropping or selecting files.
+              </p>
+            </div>
+          )}
 
           <div className="form-actions">
             <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? 'Uploading...' : 'Upload Product'}
+              {loading ? (editingId ? 'Updating...' : 'Uploading...') : (editingId ? 'Update Product' : 'Upload Product')}
             </button>
-            <button type="button" className="btn btn-secondary" onClick={clearForm}>
-              Clear Form
-            </button>
+            {editingId && (
+              <button type="button" className="btn btn-secondary" onClick={clearForm}>
+                Cancel Edit
+              </button>
+            )}
+            {!editingId && (
+              <button type="button" className="btn btn-secondary" onClick={clearForm}>
+                Clear Form
+              </button>
+            )}
           </div>
         </form>
       </div>
@@ -481,6 +659,13 @@ function ProductUpload() {
                       <span className="discount">{product.discount}% off</span>
                     )}
                   </div>
+                  <button
+                    onClick={() => handleEdit(product)}
+                    className="edit-btn"
+                    title="Edit product"
+                  >
+                    ✏️ Edit
+                  </button>
                   <button
                     onClick={() => deleteProduct(product.id)}
                     className="delete-btn"

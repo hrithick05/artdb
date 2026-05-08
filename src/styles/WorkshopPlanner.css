@@ -90,6 +90,25 @@
   overflow: hidden;
 }
 
+.edit-btn {
+  background-color: #ffc107;
+  color: #212529;
+  border: none;
+  padding: 0.6rem 1rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background-color 0.3s ease;
+  white-space: nowrap;
+  font-weight: 500;
+  margin-top: 1rem;
+  width: 100%;
+}
+
+.edit-btn:hover {
+  background-color: #e0a800;
+}
+
 .delete-btn {
   background-color: #dc3545;
   color: white;
@@ -101,7 +120,7 @@
   transition: background-color 0.3s ease;
   white-space: nowrap;
   font-weight: 500;
-  margin-top: 1rem;
+  margin-top: 0.5rem;
   width: 100%;
 }
 

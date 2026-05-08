@@ -17,6 +17,7 @@ function WorkshopPlanner() {
   const [workshops, setWorkshops] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [editingId, setEditingId] = useState(null)
 
   useEffect(() => {
     fetchWorkshops()
@@ -77,30 +78,9 @@ function WorkshopPlanner() {
 
     setLoading(true)
     try {
-      let photoUrl = null
-      let photoPath = null
-      
-      // Upload photo if provided
-      if (photo) {
-        const fileName = `${Date.now()}-${photo.file.name}`
-        const { publicUrl, error: uploadError } = await uploadImage(
-          photo.file,
-          'workshops',
-          fileName
-        )
-        
-        if (uploadError) {
-          throw new Error(`Failed to upload photo: ${uploadError.message}`)
-        }
-        
-        photoUrl = publicUrl
-        photoPath = fileName
-      }
-      
-      // Insert workshop into database
-      const { data, error: dbError } = await supabase
-        .from('workshops')
-        .insert({
+      if (editingId) {
+        // Update existing workshop
+        const updateData = {
           title: formData.title,
           date: formData.date,
           start_time: formData.startTime,
@@ -108,18 +88,72 @@ function WorkshopPlanner() {
           price: parseFloat(formData.price),
           venue: formData.venue,
           description: formData.description,
-          photo_url: photoUrl,
-          photo_path: photoPath
-        })
-        .select()
-      
-      if (dbError) throw dbError
-      
-      // Refresh workshops list
-      await fetchWorkshops()
-      clearForm()
+        }
+
+        // Upload new photo only if selected
+        if (photo) {
+          const fileName = `${Date.now()}-${photo.file.name}`
+          const { publicUrl, error: uploadError } = await uploadImage(
+            photo.file,
+            'workshops',
+            fileName
+          )
+          if (uploadError) throw new Error(`Failed to upload photo: ${uploadError.message}`)
+          updateData.photo_url = publicUrl
+          updateData.photo_path = fileName
+        }
+
+        const { error: dbError } = await supabase
+          .from('workshops')
+          .update(updateData)
+          .eq('id', editingId)
+          .select()
+
+        if (dbError) throw dbError
+        await fetchWorkshops()
+        clearForm()
+      } else {
+        // Insert new workshop
+        let photoUrl = null
+        let photoPath = null
+
+        if (photo) {
+          const fileName = `${Date.now()}-${photo.file.name}`
+          const { publicUrl, error: uploadError } = await uploadImage(
+            photo.file,
+            'workshops',
+            fileName
+          )
+
+          if (uploadError) {
+            throw new Error(`Failed to upload photo: ${uploadError.message}`)
+          }
+
+          photoUrl = publicUrl
+          photoPath = fileName
+        }
+
+        const { data, error: dbError } = await supabase
+          .from('workshops')
+          .insert({
+            title: formData.title,
+            date: formData.date,
+            start_time: formData.startTime,
+            end_time: formData.endTime,
+            price: parseFloat(formData.price),
+            venue: formData.venue,
+            description: formData.description,
+            photo_url: photoUrl,
+            photo_path: photoPath
+          })
+          .select()
+
+        if (dbError) throw dbError
+        await fetchWorkshops()
+        clearForm()
+      }
     } catch (err) {
-      setError(err.message || 'Failed to add workshop')
+      setError(err.message || (editingId ? 'Failed to update workshop' : 'Failed to add workshop'))
       console.error('Workshop error:', err)
     } finally {
       setLoading(false)
@@ -138,6 +172,22 @@ function WorkshopPlanner() {
     })
     setPhoto(null)
     setError('')
+    setEditingId(null)
+  }
+
+  const handleEdit = (workshop) => {
+    setFormData({
+      title: workshop.title,
+      date: workshop.date,
+      startTime: workshop.start_time,
+      endTime: workshop.end_time,
+      price: workshop.price,
+      venue: workshop.venue,
+      description: workshop.description || '',
+    })
+    setEditingId(workshop.id)
+    setPhoto(null)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const deleteWorkshop = async (workshopId) => {
@@ -315,11 +365,18 @@ function WorkshopPlanner() {
 
           <div className="form-actions">
             <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? 'Adding...' : 'Add Workshop'}
+              {loading ? (editingId ? 'Updating...' : 'Adding...') : (editingId ? 'Update Workshop' : 'Add Workshop')}
             </button>
-            <button type="button" className="btn btn-secondary" onClick={clearForm}>
-              Clear Form
-            </button>
+            {editingId && (
+              <button type="button" className="btn btn-secondary" onClick={clearForm}>
+                Cancel Edit
+              </button>
+            )}
+            {!editingId && (
+              <button type="button" className="btn btn-secondary" onClick={clearForm}>
+                Clear Form
+              </button>
+            )}
           </div>
         </form>
       </div>
@@ -358,6 +415,13 @@ function WorkshopPlanner() {
                   {workshop.description && (
                     <p className="workshop-description">{workshop.description}</p>
                   )}
+                  <button
+                    onClick={() => handleEdit(workshop)}
+                    className="edit-btn"
+                    title="Edit workshop"
+                  >
+                    ✏️ Edit
+                  </button>
                   <button
                     onClick={() => deleteWorkshop(workshop.id)}
                     className="delete-btn"
