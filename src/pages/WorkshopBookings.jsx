@@ -88,16 +88,18 @@ function WorkshopBookings() {
     if (!window.confirm('Are you sure you want to delete this booking?')) return
 
     try {
-      const { error: deleteError } = await supabase
+      const { error: deleteError, data } = await supabase
         .from('workshop_bookings')
         .delete()
         .eq('id', id)
+        .select()
 
       if (deleteError) throw deleteError
+      if (!data || data.length === 0) throw new Error('Delete blocked. Check Supabase RLS policies.')
       await fetchBookings()
     } catch (err) {
       console.error('Error deleting booking:', err)
-      setError('Failed to delete booking')
+      setError(err.message || 'Failed to delete booking')
     }
   }
 

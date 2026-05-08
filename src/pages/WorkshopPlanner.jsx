@@ -140,6 +140,52 @@ function WorkshopPlanner() {
     setError('')
   }
 
+  const deleteWorkshop = async (workshopId) => {
+    if (!window.confirm('Are you sure you want to delete this workshop? This action cannot be undone.')) return
+
+    try {
+      setError('')
+      console.log('🗑️ Deleting workshop:', workshopId)
+
+      // Get workshop data to find photo path
+      const { data: workshopData, error: fetchError } = await supabase
+        .from('workshops')
+        .select('photo_path')
+        .eq('id', workshopId)
+        .single()
+
+      if (fetchError) console.warn('Error fetching workshop:', fetchError)
+
+      // Delete photo from storage if it exists
+      if (workshopData?.photo_path) {
+        try {
+          await supabase.storage
+            .from('workshops')
+            .remove([workshopData.photo_path])
+          console.log(`✅ Deleted photo: ${workshopData.photo_path}`)
+        } catch (storageErr) {
+          console.warn(`Could not delete photo from storage: ${workshopData.photo_path}`, storageErr)
+        }
+      }
+
+      // Delete workshop from database
+      const { error: deleteError, data } = await supabase
+        .from('workshops')
+        .delete()
+        .eq('id', workshopId)
+        .select()
+
+      if (deleteError) throw deleteError
+      if (!data || data.length === 0) throw new Error('Delete blocked. Check Supabase RLS policies.')
+      console.log('✅ Workshop deleted successfully')
+
+      await fetchWorkshops()
+    } catch (err) {
+      console.error('❌ Error deleting workshop:', err)
+      setError(err.message || 'Failed to delete workshop')
+    }
+  }
+
   return (
     <div className="workshop-planner-container">
       <div className="form-card">
@@ -312,6 +358,13 @@ function WorkshopPlanner() {
                   {workshop.description && (
                     <p className="workshop-description">{workshop.description}</p>
                   )}
+                  <button
+                    onClick={() => deleteWorkshop(workshop.id)}
+                    className="delete-btn"
+                    title="Delete workshop"
+                  >
+                    🗑️ Delete
+                  </button>
                 </div>
               </div>
             ))}

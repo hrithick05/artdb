@@ -228,6 +228,63 @@ function ProductUpload() {
     setError('')
   }
 
+  const deleteProduct = async (productId) => {
+    if (!window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) return
+
+    try {
+      setError('')
+      console.log('🗑️ Deleting product:', productId)
+
+      // Delete all images associated with this product from storage
+      const { data: images, error: imgFetchError } = await supabase
+        .from('product_images')
+        .select('image_path')
+        .eq('product_id', productId)
+
+      if (imgFetchError) console.warn('Error fetching images:', imgFetchError)
+
+      // Delete images from storage
+      if (images && images.length > 0) {
+        for (const img of images) {
+          try {
+            await supabase.storage
+              .from('products')
+              .remove([img.image_path])
+            console.log(`✅ Deleted image: ${img.image_path}`)
+          } catch (storageErr) {
+            console.warn(`Could not delete image from storage: ${img.image_path}`, storageErr)
+          }
+        }
+      }
+
+      // Delete product images records from database
+      const { error: deleteImgError, data: deletedImages } = await supabase
+        .from('product_images')
+        .delete()
+        .eq('product_id', productId)
+        .select()
+
+      if (deleteImgError) throw deleteImgError
+      console.log('✅ Deleted product images from database:', deletedImages?.length || 0)
+
+      // Delete product record from database
+      const { error: deleteError, data: deletedProduct } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', productId)
+        .select()
+
+      if (deleteError) throw deleteError
+      if (!deletedProduct || deletedProduct.length === 0) throw new Error('Delete blocked. Check Supabase RLS policies.')
+      console.log('✅ Product deleted successfully')
+
+      await fetchProducts()
+    } catch (err) {
+      console.error('❌ Error deleting product:', err)
+      setError(err.message || 'Failed to delete product')
+    }
+  }
+
   return (
     <div className="product-upload-container">
       <div className="form-card">
@@ -247,7 +304,7 @@ function ProductUpload() {
                 required
               >
                 <option value="">Select Category</option>
-                <option value="handicrafts">Handicrafts</option>
+                <option value="handcraft">Handcraft</option>
                 <option value="textiles">Textiles</option>
                 <option value="pottery">Pottery</option>
                 <option value="jewelry">Jewelry</option>
@@ -417,6 +474,13 @@ function ProductUpload() {
                       <span className="discount">{product.discount}% off</span>
                     )}
                   </div>
+                  <button
+                    onClick={() => deleteProduct(product.id)}
+                    className="delete-btn"
+                    title="Delete product"
+                  >
+                    🗑️ Delete
+                  </button>
                 </div>
               </div>
             ))}

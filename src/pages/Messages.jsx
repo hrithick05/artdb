@@ -48,16 +48,18 @@ function Messages() {
     if (!window.confirm('Are you sure you want to delete this message?')) return
     
     try {
-      const { error: deleteError } = await supabase
+      const { error: deleteError, data } = await supabase
         .from('contact_submissions')
         .delete()
         .eq('id', id)
-      
+        .select()
+
       if (deleteError) throw deleteError
+      if (!data || data.length === 0) throw new Error('Delete blocked. Check Supabase RLS policies.')
       await fetchMessages()
     } catch (err) {
       console.error('Error deleting message:', err)
-      setError('Failed to delete message')
+      setError(err.message || 'Failed to delete message')
     }
   }
 

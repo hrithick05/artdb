@@ -116,6 +116,25 @@
   font-weight: 600;
 }
 
+.delete-btn {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 0.6rem 1rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background-color 0.3s ease;
+  white-space: nowrap;
+  font-weight: 500;
+  margin-top: 1rem;
+  width: 100%;
+}
+
+.delete-btn:hover {
+  background-color: #c82333;
+}
+
 @media (max-width: 768px) {
   .product-images {
     grid-template-columns: 1fr;

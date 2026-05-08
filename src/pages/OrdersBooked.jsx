@@ -72,18 +72,20 @@ function OrdersBooked() {
 
   const deleteOrder = async (id) => {
     if (!window.confirm('Are you sure you want to delete this order?')) return
-    
+
     try {
-      const { error: deleteError } = await supabase
+      const { error: deleteError, data } = await supabase
         .from('orders')
         .delete()
         .eq('id', id)
-      
+        .select()
+
       if (deleteError) throw deleteError
+      if (!data || data.length === 0) throw new Error('Delete blocked. Check Supabase RLS policies.')
       await fetchOrders()
     } catch (err) {
       console.error('Error deleting order:', err)
-      setError('Failed to delete order')
+      setError(err.message || 'Failed to delete order')
     }
   }
 
