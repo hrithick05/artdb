@@ -11,6 +11,7 @@ function ProductUpload() {
     price: '',
     discount: '',
     description: '',
+    availability: 'available',
   })
   const [images, setImages] = useState([])
   const [products, setProducts] = useState([])
@@ -222,7 +223,8 @@ function ProductUpload() {
             price: parseFloat(formData.price),
             discount: parseFloat(formData.discount) || 0,
             description: formData.description,
-            num_pictures: images.length // Update the count
+            num_pictures: images.length, // Update the count
+            availability: formData.availability
           })
           .eq('id', editingId)
           .select()
@@ -244,7 +246,8 @@ function ProductUpload() {
             price: parseFloat(formData.price),
             discount: parseFloat(formData.discount) || 0,
             description: formData.description,
-            num_pictures: requiredPics
+            num_pictures: requiredPics,
+            availability: formData.availability
           })
           .select()
 
@@ -327,6 +330,7 @@ function ProductUpload() {
       price: '',
       discount: '',
       description: '',
+      availability: 'available',
     })
     setImages([])
     setError('')
@@ -362,6 +366,7 @@ function ProductUpload() {
         price: product.price,
         discount: product.discount || '',
         description: product.description || '',
+        availability: product.availability || 'available',
       })
 
     } catch (err) {
@@ -374,6 +379,7 @@ function ProductUpload() {
         price: product.price,
         discount: product.discount || '',
         description: product.description || '',
+        availability: product.availability || 'available',
       })
     }
 
@@ -534,6 +540,22 @@ function ProductUpload() {
                 max="100"
               />
             </div>
+
+            <div className="form-group">
+              <label htmlFor="availability">Availability *</label>
+              <select
+                id="availability"
+                name="availability"
+                value={formData.availability}
+                onChange={handleInputChange}
+                required
+              >
+                <option value="available">Available</option>
+                <option value="out_of_stock">Out of Stock</option>
+                <option value="coming_soon">Coming Soon</option>
+                <option value="discontinued">Discontinued</option>
+              </select>
+            </div>
           </div>
 
           <div className="form-group">
@@ -650,7 +672,12 @@ function ProductUpload() {
                   )}
                 </div>
                 <div className="product-info">
-                  <span className="product-category">{product.category}</span>
+                  <div className="product-badges">
+                    <span className="product-category">{product.category}</span>
+                    <span className={`product-availability ${product.availability || 'available'}`}>
+                      {(product.availability || 'available').replace(/_/g, ' ')}
+                    </span>
+                  </div>
                   <h3>{product.title}</h3>
                   <p className="product-description">{product.description}</p>
                   <div className="product-pricing">

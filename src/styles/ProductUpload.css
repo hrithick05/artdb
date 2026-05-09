@@ -2,6 +2,13 @@
   width: 100%;
 }
 
+.product-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
 .product-category {
   display: inline-block;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -12,7 +19,36 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  margin-bottom: 0.5rem;
+}
+
+.product-availability {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.product-availability.available {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.product-availability.out_of_stock {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.product-availability.coming_soon {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.product-availability.discontinued {
+  background-color: #e5e7eb;
+  color: #374151;
 }
 
 .products-section {
